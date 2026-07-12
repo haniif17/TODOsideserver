@@ -5,9 +5,12 @@ from ninja.testing import TestClient
 from config.api import api
 from core.models import Category, Todo
 
-
 client = TestClient(api)
 
+
+# ==================================================
+# AUTHENTICATION TEST
+# ==================================================
 
 class AuthenticationTest(TestCase):
 
@@ -42,8 +45,16 @@ class AuthenticationTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("access_token", response.json())
 
+        data = response.json()
+
+        self.assertTrue(data["success"])
+        self.assertIn("access_token", data)
+
+
+# ==================================================
+# CATEGORY TEST
+# ==================================================
 
 class CategoryTest(TestCase):
 
@@ -58,7 +69,13 @@ class CategoryTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
         self.assertEqual(Category.objects.count(), 1)
+
+        category = Category.objects.first()
+
+        self.assertEqual(category.name, "Kuliah")
+        self.assertEqual(category.description, "Tugas Kampus")
 
     def test_get_categories(self):
 
@@ -71,6 +88,12 @@ class CategoryTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+        self.assertEqual(Category.objects.count(), 1)
+
+
+# ==================================================
+# TODO TEST
+# ==================================================
 
 class TodoTest(TestCase):
 
@@ -102,7 +125,14 @@ class TodoTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
         self.assertEqual(Todo.objects.count(), 1)
+
+        todo = Todo.objects.first()
+
+        self.assertEqual(todo.title, "Belajar Django")
+        self.assertEqual(todo.status, "pending")
+        self.assertEqual(todo.priority, "high")
 
     def test_get_todos(self):
 
@@ -119,6 +149,8 @@ class TodoTest(TestCase):
         response = client.get("/todos/")
 
         self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(Todo.objects.count(), 1)
 
     def test_update_todo(self):
 
@@ -147,6 +179,13 @@ class TodoTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+        todo.refresh_from_db()
+
+        self.assertEqual(todo.title, "Baru")
+        self.assertEqual(todo.status, "completed")
+        self.assertEqual(todo.priority, "high")
+        self.assertTrue(todo.is_completed)
+
     def test_delete_todo(self):
 
         todo = Todo.objects.create(
@@ -159,7 +198,79 @@ class TodoTest(TestCase):
             deadline="2026-07-10"
         )
 
-        response = client.delete(f"/todos/{todo.id}")
+        response = client.delete(
+            f"/todos/{todo.id}"
+        )
 
         self.assertEqual(response.status_code, 200)
+
         self.assertEqual(Todo.objects.count(), 0)
+
+
+# ==================================================
+# QUERY TEST
+# ==================================================
+
+class TodoQueryTest(TestCase):
+
+    def setUp(self):
+
+        self.user = User.objects.create_user(
+            username="admin",
+            password="admin123"
+        )
+
+        self.category = Category.objects.create(
+            name="Kuliah"
+        )
+
+        Todo.objects.create(
+            user=self.user,
+            category=self.category,
+            title="Python",
+            status="completed",
+            priority="high",
+            deadline="2026-07-10"
+        )
+
+        Todo.objects.create(
+            user=self.user,
+            category=self.category,
+            title="React",
+            status="pending",
+            priority="low",
+            deadline="2026-07-10"
+        )
+
+    def test_filter_completed(self):
+
+        todos = Todo.objects.filter(
+            status="completed"
+        )
+
+        self.assertEqual(todos.count(), 1)
+
+        self.assertEqual(
+            todos.first().title,
+            "Python"
+        )
+
+
+# ==================================================
+# VALIDATION TEST
+# ==================================================
+
+from django.core.exceptions import ValidationError
+
+
+class ValidationTest(TestCase):
+
+    def test_empty_category_name(self):
+
+        category = Category(
+            name=""
+        )
+
+        with self.assertRaises(ValidationError):
+
+            category.full_clean()
