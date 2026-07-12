@@ -128,5 +128,7 @@ CORS_ALLOW_CREDENTIALS = True
 # ==========================
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://illustrious-generosity-production-0239.up.railway.app",
+    "https://*.up.railway.app",
 ]
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
