@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN mkdir -p static
+
 RUN python manage.py collectstatic --noinput
 
-EXPOSE 10000
-
-CMD gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+CMD gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000}
